@@ -1,0 +1,6 @@
+@import "base.css";
+
+h1 {
+  padding-left: 24px;
+  background: url("../img/dot.png") left center / 16px 16px no-repeat;
+}
