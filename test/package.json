@@ -1,0 +1,10 @@
+{
+  "private": true,
+  "description": "Browser tests for the sitecrate runtime",
+  "scripts": {
+    "test": "node --test"
+  },
+  "devDependencies": {
+    "playwright": "1.61.1"
+  }
+}

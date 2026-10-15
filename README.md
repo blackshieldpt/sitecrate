@@ -8,13 +8,26 @@ from any web server, with no extraction step and no server-side support.
 Navigation between pages, back/forward, deep links and site search keep working
 inside the file.
 
+```mermaid
+flowchart LR
+    site["<b>site/</b><br>index.html<br>about/index.html<br>css/ js/ img/ fonts/"]
+    out["<b>out.html</b><br>viewer runtime<br>+ every file, gzipped"]
+    browser["<b>Browser</b><br>file:// or HTTP<br>pages, links, search"]
+    site -- "sitecrate site/" --> out
+    out -- "open" --> browser
+```
+
 ## Install
 
-Requires Go 1.23 or later.
+Prebuilt binaries for Linux, macOS and Windows are attached to each
+[release](https://github.com/blackshieldpt/sitecrate/releases), with a
+`SHA256SUMS` file. To build from source, which requires Go 1.23 or later:
 
 ```sh
-go build -o sitecrate .
+go install github.com/blackshieldpt/sitecrate/cmd/sitecrate@latest
 ```
+
+or, from a checkout, `make build`.
 
 ## Usage
 
@@ -23,9 +36,10 @@ sitecrate <site-dir> [-o out.html] [-entry index.html]
 ```
 
 | Flag     | Default      | Meaning                                         |
-|----------|--------------|-------------------------------------------------|
-| `-o`     | `out.html`   | Output file.                                    |
-| `-entry` | `index.html` | Page shown first, relative to `<site-dir>`.     |
+|----------|--------------|--------------------------------------------------|
+| `-o`     | `out.html`   | Output file.                                     |
+| `-entry` | `index.html` | HTML page shown first, relative to `<site-dir>`. |
+| `-version` |            | Print the version and exit.                      |
 
 Flags may come before or after `<site-dir>`.
 
@@ -39,13 +53,15 @@ sitecrate ./public -o docs.html
 What is packed:
 
 - every regular file under `<site-dir>`;
-- symlinks to files are followed; symlinked directories are not;
+- symlinks to files are followed; symlinked directories are not, except
+  `<site-dir>` itself;
 - files and directories whose name starts with `.` are skipped;
+- files whose name is not valid UTF-8 are skipped, with a warning;
 - the output file itself is skipped if it lives inside `<site-dir>`.
 
 Warnings about features that may not work in the packed output go to stderr,
-one line per feature. The exit status is 0 on success, 1 on error and 2 on
-bad usage.
+one line per feature. The output file is replaced only when packing succeeds.
+The exit status is 0 on success, 1 on error and 2 on bad usage.
 
 ## Linking into a packed site
 
@@ -71,8 +87,8 @@ renders the requested page in a full-window iframe. All rewriting happens in the
 browser, when a page is first shown:
 
 - assets (`src`, `link href`, `srcset`, `poster`, `object data`) become blob URLs;
-- `url()` and `@import` in stylesheets, `<style>` elements and `style`
-  attributes are rewritten the same way;
+- `url()`, `@import` and `image-set()` in stylesheets, `<style>` elements and
+  `style` attributes are rewritten the same way;
 - links to other pages become routes of the form shown above.
 
 ## What works
@@ -81,9 +97,11 @@ browser, when a page is first shown:
 - Relative, root-relative and directory URLs (`about/` resolves to
   `about/index.html`, `/guide` to `guide.html` or `guide/index.html`).
 - Query strings and fragments on asset URLs (`style.css?v=3`, `font.woff2#iefix`).
-- `<base href>` and `<meta http-equiv="refresh">` redirects.
+- `<base href>` and `<meta http-equiv="refresh">` redirects, after their delay.
+  Refreshes that reload the page itself are ignored.
 - Links created by scripts after the page loads.
-- `GET` forms that submit to a page of the site.
+- `GET` forms that submit to a page of the site, including the clicked
+  button's value and its `formaction`, `formmethod` and `formtarget`.
 - Query strings on pages (`location.search`).
 - `fetch()` of files of the site, when called with a string URL.
 - Search on Sphinx-generated sites.
@@ -112,13 +130,39 @@ have shipped since 2023.
 ## Development
 
 ```sh
-go test ./...
+make build          # ./sitecrate
+make test-go        # go test ./...
+make test-js        # runtime unit tests in Node
+make test-browser   # runtime tests in Chromium, Firefox and WebKit
+make test           # all three
+make check          # gofmt and go vet
 ```
 
-- `main.go`: command line.
-- `pack/pack.go`: walking the site and writing the output file.
-- `pack/runtime.js`: the in-browser runtime, embedded with `go:embed`.
-- `pack/testdata/site`: fixture site used by the tests.
+The unit tests need only Node.js. The browser tests open the packed fixture from `file://` and over HTTP with
+[Playwright](https://playwright.dev/); the first run installs it and its
+browsers. `BROWSERS=chromium make test-browser` limits the
+engines.
+
+- `cmd/sitecrate`: command line.
+- `sitecrate.go`: `Pack`, the library entry point.
+- `walk.go`: finding the files of the site.
+- `mime.go`: MIME types by extension.
+- `scan.go`: warnings about unsupported features.
+- `payload.go`: writing the output file: `shell.html` with the payload and
+  the runtime.
+- `runtime/`: the in-browser runtime, joined in the order listed in
+  `payload.go`: `unpack.js` (payload), `url.js` (resolving references),
+  `rewrite.js` (HTML and CSS), `frame.js` (rendering and navigation),
+  `main.js` (start-up).
+- `testdata/site`: fixture site used by the tests.
+- `test/runtime.test.js`: unit tests of the runtime helpers.
+- `test/browser.test.js`: browser tests of the runtime.
+
+CI (`.github/workflows/ci.yml`) runs the Go tests on Linux, macOS and Windows
+and the runtime tests on Linux. The version lives in `cmd/sitecrate/main.go`.
+Pushing a tag `v<version>` runs CI, checks that the tag matches that version,
+then runs `make dist` and publishes the archives as a GitHub release; versions
+with a `-`, such as `1.0.0-rc.1`, become prereleases.
 
 ## Security
 

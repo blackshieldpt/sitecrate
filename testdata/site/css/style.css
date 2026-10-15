@@ -1,0 +1,16 @@
+@import "base.css";
+
+h1 {
+  padding-left: 24px;
+  background: url("../img/dot.png") left center / 16px 16px no-repeat;
+}
+
+#image-set {
+  height: 1px;
+  background-image: image-set("../img/dot.png" 1x);
+}
+
+#upper {
+  height: 1px;
+  background-image: URL(../img/dot.png?v=2#x);
+}

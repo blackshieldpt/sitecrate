@@ -1,2 +1,4 @@
 /sitecrate
 /out.html
+/dist/
+node_modules/

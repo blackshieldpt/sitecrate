@@ -10,13 +10,18 @@
 <h1>Home</h1>
 <p id="js">js not run</p>
 <img id="dot" src="img/dot.png" width="40" height="40" alt="dot">
+<img id="srcset" srcset="img/dot,copy.png 1x, img/dot.png 2x" alt="srcset with a comma in a URL">
+<img id="srcset-data" srcset="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg== 1x" alt="srcset with a data URI">
+<div id="image-set"></div>
+<div id="upper"></div>
 <ul>
 <li><a id="to-about" href="about/">About (directory link)</a></li>
 <li><a id="to-second" href="docs/page.html#second">Docs, second section</a></li>
 <li><a id="to-old" href="old.html">Old page (redirects to About)</a></li>
 <li><a id="to-ext" href="https://example.com/">External</a></li>
+<li><a id="cancelled" href="about/">About (cancelled by a page script)</a></li>
 </ul>
-<form id="search" action="search.html" method="get"><input name="q" value="second section"> <button>Search</button></form>
+<form id="search" action="search.html" method="get"><input name="q" value="second section"> <button name="go" value="yes">Search</button> <button id="form-about" formaction="about/">About</button></form>
 <script src="js/app.js"></script>
 </body>
 </html>

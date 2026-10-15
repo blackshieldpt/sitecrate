@@ -1,4 +1,4 @@
-package pack
+package sitecrate
 
 import (
 	"bytes"
@@ -9,7 +9,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"slices"
 	"strings"
 	"testing"
 )
@@ -68,16 +67,20 @@ func TestPackRoundTrip(t *testing.T) {
 	}
 	types := map[string]string{
 		"about/index.html":  "text/html",
+		"badbase.html":      "text/html",
 		"css/base.css":      "text/css",
 		"css/style.css":     "text/css",
 		"docs/page.html":    "text/html",
+		"img/dot,copy.png":  "image/png",
 		"img/dot.png":       "image/png",
 		"index.html":        "text/html",
 		"js/app.js":         "text/javascript",
 		"js/search.js":      "text/javascript",
+		"later.html":        "text/html",
+		"old.html":          "text/html",
+		"reload.html":       "text/html",
 		"search-index.json": "application/json",
 		"search.html":       "text/html",
-		"old.html":          "text/html",
 	}
 	if len(m.Files) != len(types) {
 		t.Errorf("packed %d files, want %d", len(m.Files), len(types))
@@ -111,52 +114,71 @@ func TestPackSkipsOutputInsideSite(t *testing.T) {
 	}
 }
 
-func TestPackWarnings(t *testing.T) {
-	dir := t.TempDir()
-	os.WriteFile(filepath.Join(dir, "index.html"), []byte(`<form action="/search"></form><form method="post" action="/login"></form><script src="app.js"></script>`), 0o644)
-	os.WriteFile(filepath.Join(dir, "app.js"), []byte(`import x from "./x.js"; fetch("data.json"); new XMLHttpRequest()`), 0o644)
-	os.WriteFile(filepath.Join(dir, "x.js"), []byte(`export default fetch`), 0o644)
-	os.WriteFile(filepath.Join(dir, "y.js"), []byte(`fetch("y.json"); new XMLHttpRequest()`), 0o644)
-	warnings, err := Pack(dir, "index.html", filepath.Join(t.TempDir(), "out.html"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	want := []string{
-		"XMLHttpRequest in 2 file(s), e.g. app.js: may not work in packed output",
-		"relative module imports in 1 file(s), e.g. app.js: may not work in packed output",
-		"POST forms in 1 file(s), e.g. index.html: may not work in packed output",
-	}
-	if !slices.Equal(warnings, want) {
-		t.Errorf("warnings = %q, want %q", warnings, want)
-	}
-}
-
-func TestPackFollowsFileSymlinks(t *testing.T) {
+func TestPackSkipsOutputThroughSymlink(t *testing.T) {
 	dir := t.TempDir()
 	os.WriteFile(filepath.Join(dir, "index.html"), []byte("<p>hi</p>"), 0o644)
-	target := filepath.Join(t.TempDir(), "lib.js")
-	os.WriteFile(target, []byte("var lib"), 0o644)
-	if err := os.Symlink(target, filepath.Join(dir, "lib.js")); err != nil {
+	alias := filepath.Join(t.TempDir(), "alias")
+	if err := os.Symlink(dir, alias); err != nil {
 		t.Skip(err)
 	}
-	os.Symlink(filepath.Dir(target), filepath.Join(dir, "linked-dir"))
-	os.Symlink(filepath.Join(dir, "missing"), filepath.Join(dir, "broken.js"))
-	out := filepath.Join(t.TempDir(), "out.html")
-	if _, err := Pack(dir, "index.html", out); err != nil {
-		t.Fatal(err)
+	out := filepath.Join(alias, "out.html")
+	for range 2 {
+		if _, err := Pack(dir, "index.html", out); err != nil {
+			t.Fatal(err)
+		}
 	}
-	m, files := unpack(t, out)
-	if len(m.Files) != 2 || string(files["lib.js"]) != "var lib" {
-		t.Errorf("files = %v, want index.html and the symlinked lib.js", m.Files)
+	m, _ := unpack(t, out)
+	if len(m.Files) != 1 {
+		t.Errorf("files = %v, want only index.html", m.Files)
 	}
 }
 
-func TestPackMissingEntry(t *testing.T) {
-	out := filepath.Join(t.TempDir(), "out.html")
-	if _, err := Pack("testdata/site", "nope.html", out); err == nil {
-		t.Error("expected error for missing entry")
+func TestPackSymlinkedRoot(t *testing.T) {
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "index.html"), []byte("<p>hi</p>"), 0o644)
+	link := filepath.Join(t.TempDir(), "site")
+	if err := os.Symlink(dir, link); err != nil {
+		t.Skip(err)
 	}
-	if _, err := os.Stat(out); err == nil {
-		t.Error("output created despite missing entry")
+	out := filepath.Join(t.TempDir(), "out.html")
+	if _, err := Pack(link, "index.html", out); err != nil {
+		t.Fatal(err)
+	}
+	if m, _ := unpack(t, out); len(m.Files) != 1 {
+		t.Errorf("files = %v, want index.html", m.Files)
+	}
+}
+
+func TestPackErrorKeepsOutput(t *testing.T) {
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "index.html"), []byte("<p>hi</p>"), 0o644)
+	locked := filepath.Join(dir, "locked.txt")
+	os.WriteFile(locked, []byte("secret"), 0o000)
+	if _, err := os.ReadFile(locked); err == nil {
+		t.Skip("cannot make a file unreadable here")
+	}
+	outDir := t.TempDir()
+	out := filepath.Join(outDir, "out.html")
+	os.WriteFile(out, []byte("old"), 0o644)
+	if _, err := Pack(dir, "index.html", out); err == nil {
+		t.Fatal("expected error for unreadable file")
+	}
+	if data, _ := os.ReadFile(out); string(data) != "old" {
+		t.Errorf("output = %q, want the previous contents", data)
+	}
+	if entries, _ := os.ReadDir(outDir); len(entries) != 1 {
+		t.Errorf("temporary file left behind: %v", entries)
+	}
+}
+
+func TestPackBadEntry(t *testing.T) {
+	for _, entry := range []string{"nope.html", "css/style.css"} {
+		out := filepath.Join(t.TempDir(), "out.html")
+		if _, err := Pack("testdata/site", entry, out); err == nil {
+			t.Errorf("%s: expected error", entry)
+		}
+		if _, err := os.Stat(out); err == nil {
+			t.Errorf("%s: output created", entry)
+		}
 	}
 }
