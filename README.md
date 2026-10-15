@@ -21,7 +21,7 @@ flowchart LR
 
 Prebuilt binaries for Linux, macOS and Windows are attached to each
 [release](https://github.com/blackshieldpt/sitecrate/releases), with a
-`SHA256SUMS` file. To build from source, which requires Go 1.23 or later:
+`SHA256SUMS` file. To build from source, which requires Go 1.27 or later:
 
 ```sh
 go install github.com/blackshieldpt/sitecrate/cmd/sitecrate@latest

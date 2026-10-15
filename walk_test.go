@@ -33,6 +33,9 @@ func TestPackInvalidUTF8Names(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "a\xff.txt"), []byte("x"), 0o644); err != nil {
 		t.Skip(err)
 	}
+	if entries, _ := os.ReadDir(dir); !slices.ContainsFunc(entries, func(e os.DirEntry) bool { return e.Name() == "a\xff.txt" }) {
+		t.Skip("file system does not keep names that are not valid UTF-8")
+	}
 	out := filepath.Join(t.TempDir(), "out.html")
 	warnings, err := Pack(dir, "index.html", out)
 	if err != nil {
