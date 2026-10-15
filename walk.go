@@ -16,9 +16,9 @@ type found struct {
 }
 
 // walk finds the slash-separated relative paths of all non-hidden files
-// under dir, except the file skip. Symlinks to files outside dir are only
-// packed when followSymlinks is set.
-func walk(dir string, skip fs.FileInfo, followSymlinks bool) (found, error) {
+// under dir, except the file skip. Symlinks that do not resolve within root,
+// the root at dir, are only packed when root is nil.
+func walk(dir string, root *os.Root, skip fs.FileInfo) (found, error) {
 	var f found
 	err := filepath.WalkDir(dir, func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -42,9 +42,14 @@ func walk(dir string, skip fs.FileInfo, followSymlinks bool) (found, error) {
 		if err != nil {
 			return err
 		}
+		outside := false
+		if d.Type()&fs.ModeSymlink != 0 && root != nil {
+			_, err := root.Stat(rel)
+			outside = err != nil
+		}
 		rel = filepath.ToSlash(rel)
 		switch {
-		case d.Type()&fs.ModeSymlink != 0 && !followSymlinks && !inside(dir, p):
+		case outside:
 			f.outside = append(f.outside, rel)
 		case !utf8.ValidString(rel):
 			f.invalid = append(f.invalid, rel)
@@ -54,14 +59,4 @@ func walk(dir string, skip fs.FileInfo, followSymlinks bool) (found, error) {
 		return nil
 	})
 	return f, err
-}
-
-// inside reports whether the symlink p resolves to a file under dir
-func inside(dir, p string) bool {
-	target, err := filepath.EvalSymlinks(p)
-	if err != nil {
-		return false
-	}
-	rel, err := filepath.Rel(dir, target)
-	return err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
 }

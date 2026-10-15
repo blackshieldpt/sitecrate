@@ -9,8 +9,7 @@ import (
 	"encoding/json"
 	"html"
 	"io"
-	"os"
-	"path/filepath"
+	"io/fs"
 	"strings"
 )
 
@@ -66,9 +65,9 @@ type manifest struct {
 	Files []file `json:"files"`
 }
 
-// write writes the shell page with the files at paths under dir as its
+// write writes the shell page with the files at paths in fsys as its
 // payload to w, and returns warnings about unsupported features in use.
-func write(w io.Writer, dir, title, entry string, paths []string) ([]string, error) {
+func write(w io.Writer, fsys fs.FS, title, entry string, paths []string) ([]string, error) {
 	bw := bufio.NewWriter(w)
 	bw.WriteString(shellParts[0] + html.EscapeString(title) + shellParts[1])
 
@@ -78,7 +77,7 @@ func write(w io.Writer, dir, title, entry string, paths []string) ([]string, err
 	m := manifest{Entry: entry}
 	s := newScanner()
 	for _, p := range paths {
-		data, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(p)))
+		data, err := fs.ReadFile(fsys, p)
 		if err != nil {
 			return nil, err
 		}

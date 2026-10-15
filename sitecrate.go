@@ -9,8 +9,8 @@ import (
 )
 
 // Pack writes the site rooted at dir to the single HTML file out, opening on
-// the page entry. Symlinks to files outside dir are skipped unless
-// followSymlinks is set. It returns warnings about unsupported features in
+// the page entry. Symlinks that leave dir, including absolute ones, are
+// skipped unless followSymlinks is set. It returns warnings about unsupported features in
 // use and skipped files. On error, an existing out is left untouched.
 func Pack(dir, entry, out string, followSymlinks bool) ([]string, error) {
 	dir, err := filepath.Abs(dir)
@@ -21,8 +21,19 @@ func Pack(dir, entry, out string, followSymlinks bool) ([]string, error) {
 	if dir, err = filepath.EvalSymlinks(dir); err != nil { // WalkDir does not follow a symlinked root
 		return nil, err
 	}
+	// without followSymlinks, files are found and read through an os.Root,
+	// which refuses symlinks that leave dir, even one swapped in after the walk
+	var root *os.Root
+	fsys := os.DirFS(dir)
+	if !followSymlinks {
+		if root, err = os.OpenRoot(dir); err != nil {
+			return nil, err
+		}
+		defer root.Close()
+		fsys = root.FS()
+	}
 	skip, _ := os.Stat(out) // the output is not packed when it lives inside dir
-	found, err := walk(dir, skip, followSymlinks)
+	found, err := walk(dir, root, skip)
 	if err != nil {
 		return nil, err
 	}
@@ -37,7 +48,7 @@ func Pack(dir, entry, out string, followSymlinks bool) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	warnings, err := write(f, dir, title, entry, found.paths)
+	warnings, err := write(f, fsys, title, entry, found.paths)
 	if cerr := f.Close(); err == nil {
 		err = cerr
 	}
@@ -52,7 +63,7 @@ func Pack(dir, entry, out string, followSymlinks bool) ([]string, error) {
 		return nil, err
 	}
 	if n := len(found.outside); n > 0 {
-		warnings = append(warnings, fmt.Sprintf("skipped %d symlink(s) to files outside the site, e.g. %s; pack them with -follow-symlinks", n, found.outside[0]))
+		warnings = append(warnings, fmt.Sprintf("skipped %d symlink(s) that leave the site or are absolute, e.g. %s; pack them with -follow-symlinks", n, found.outside[0]))
 	}
 	if n := len(found.invalid); n > 0 {
 		warnings = append(warnings, fmt.Sprintf("skipped %d file(s) whose name is not valid UTF-8, e.g. %q", n, found.invalid[0]))

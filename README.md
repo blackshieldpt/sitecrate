@@ -76,8 +76,9 @@ sitecrate ./public -o docs.html
 What is packed:
 
 - every regular file under `<site-dir>`;
-- symlinks to files inside `<site-dir>` are followed; symlinks to files
-  outside it are skipped with a warning, unless `-follow-symlinks` is given
+- relative symlinks to files inside `<site-dir>` are followed; symlinks that
+  leave it, and absolute symlinks, are skipped with a warning, unless
+  `-follow-symlinks` is given
   (Debian's documentation packages, for one, link to shared JavaScript
   elsewhere on the system);
 - symlinked directories are not followed, except `<site-dir>` itself;

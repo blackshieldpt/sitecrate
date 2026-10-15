@@ -37,9 +37,14 @@ packed file as a whole; distribute it with a checksum or signature if that
 matters.
 
 **Symlinks out of the site are not followed by default.** A symlink inside the
-site directory that points to a file outside it is skipped with a warning. With
-`-follow-symlinks`, that file's contents are embedded; only use it on a
-directory whose contents you have reviewed.
+site directory that points to a file outside it, or any absolute symlink, is
+skipped with a warning. Files are read through an `os.Root` confined to the
+site directory, so a symlink swapped in while packing is refused too. With
+`-follow-symlinks`, such files are embedded; only use it on a directory whose
+contents you have reviewed.
+
+**Warnings and errors are escaped.** Control characters in file names are
+printed as `\x..` escapes, so a crafted name cannot drive the terminal.
 
 **The packer embeds everything it finds.** All non-hidden files under the site
 directory end up in the output, readable by anyone who has the file. Check for

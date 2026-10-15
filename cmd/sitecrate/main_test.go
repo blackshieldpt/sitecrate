@@ -46,3 +46,9 @@ func TestVersion(t *testing.T) {
 		t.Errorf("exit status %d, output %q", code, stdout.String())
 	}
 }
+
+func TestPrintable(t *testing.T) {
+	if got, want := printable("a\x1b[31mb\u009b\tc é"), `a\x1b[31mb\x9b\x09c é`; got != want {
+		t.Errorf("printable = %q, want %q", got, want)
+	}
+}

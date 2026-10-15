@@ -1,6 +1,7 @@
 package sitecrate
 
 import (
+	"io"
 	"os"
 	"path/filepath"
 	"slices"
@@ -16,7 +17,8 @@ func TestPackSymlinks(t *testing.T) {
 	if err := os.Symlink(target, filepath.Join(dir, "lib.js")); err != nil {
 		t.Skip(err)
 	}
-	os.Symlink(filepath.Join(dir, "local.js"), filepath.Join(dir, "alias.js"))
+	os.Symlink("local.js", filepath.Join(dir, "alias.js"))
+	os.Symlink(filepath.Join(dir, "local.js"), filepath.Join(dir, "absolute.js"))
 	os.Symlink(filepath.Dir(target), filepath.Join(dir, "linked-dir"))
 	os.Symlink(filepath.Join(dir, "missing"), filepath.Join(dir, "broken.js"))
 
@@ -34,12 +36,12 @@ func TestPackSymlinks(t *testing.T) {
 		want := []string{"alias.js", "index.html", "local.js"}
 		var wantWarnings []string
 		if follow {
-			want = []string{"alias.js", "index.html", "lib.js", "local.js"}
+			want = []string{"absolute.js", "alias.js", "index.html", "lib.js", "local.js"}
 			if string(files["lib.js"]) != "var lib" {
 				t.Errorf("lib.js = %q", files["lib.js"])
 			}
 		} else {
-			wantWarnings = []string{"skipped 1 symlink(s) to files outside the site, e.g. lib.js; pack them with -follow-symlinks"}
+			wantWarnings = []string{"skipped 2 symlink(s) that leave the site or are absolute, e.g. absolute.js; pack them with -follow-symlinks"}
 		}
 		if !slices.Equal(paths, want) {
 			t.Errorf("follow=%v: files = %v, want %v", follow, paths, want)
@@ -70,5 +72,23 @@ func TestPackInvalidUTF8Names(t *testing.T) {
 	}
 	if m, _ := unpack(t, out); len(m.Files) != 1 {
 		t.Errorf("files = %v, want index.html", m.Files)
+	}
+}
+
+func TestWriteRefusesSymlinkOutOfRoot(t *testing.T) {
+	dir := t.TempDir()
+	target := filepath.Join(t.TempDir(), "secret.txt")
+	os.WriteFile(target, []byte("secret"), 0o644)
+	if err := os.Symlink(target, filepath.Join(dir, "lib.js")); err != nil {
+		t.Skip(err)
+	}
+	root, err := os.OpenRoot(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer root.Close()
+	// as if lib.js had been swapped for the symlink after the walk
+	if _, err := write(io.Discard, root.FS(), "site", "lib.js", []string{"lib.js"}); err == nil {
+		t.Error("expected error reading a symlink out of the root")
 	}
 }

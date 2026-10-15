@@ -7,6 +7,8 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
+	"unicode"
 
 	"github.com/blackshieldpt/sitecrate"
 )
@@ -64,11 +66,25 @@ func run(args []string, stdout, stderr io.Writer) int {
 
 	warnings, err := sitecrate.Pack(dir, filepath.ToSlash(filepath.Clean(*entry)), *out, *follow)
 	for _, w := range warnings {
-		fmt.Fprintln(stderr, "warning:", w)
+		fmt.Fprintln(stderr, "warning:", printable(w))
 	}
 	if err != nil {
-		fmt.Fprintln(stderr, "sitecrate:", err)
+		fmt.Fprintln(stderr, "sitecrate:", printable(err.Error()))
 		return 1
 	}
 	return 0
+}
+
+// printable escapes control characters, which file names in warnings and
+// errors can contain, so that the output cannot drive the terminal
+func printable(s string) string {
+	var b strings.Builder
+	for _, r := range s {
+		if unicode.IsControl(r) {
+			fmt.Fprintf(&b, "\\x%02x", r)
+		} else {
+			b.WriteRune(r)
+		}
+	}
+	return b.String()
 }
