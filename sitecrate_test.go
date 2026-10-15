@@ -53,7 +53,7 @@ func unpack(t *testing.T, out string) (manifest, map[string][]byte) {
 
 func TestPackRoundTrip(t *testing.T) {
 	out := filepath.Join(t.TempDir(), "out.html")
-	warnings, err := Pack("testdata/site", "index.html", out)
+	warnings, err := Pack("testdata/site", "index.html", out, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -104,7 +104,7 @@ func TestPackSkipsOutputInsideSite(t *testing.T) {
 	os.WriteFile(filepath.Join(dir, "index.html"), []byte("<p>hi</p>"), 0o644)
 	out := filepath.Join(dir, "out.html")
 	for range 2 {
-		if _, err := Pack(dir, "index.html", out); err != nil {
+		if _, err := Pack(dir, "index.html", out, false); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -123,7 +123,7 @@ func TestPackSkipsOutputThroughSymlink(t *testing.T) {
 	}
 	out := filepath.Join(alias, "out.html")
 	for range 2 {
-		if _, err := Pack(dir, "index.html", out); err != nil {
+		if _, err := Pack(dir, "index.html", out, false); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -141,7 +141,7 @@ func TestPackSymlinkedRoot(t *testing.T) {
 		t.Skip(err)
 	}
 	out := filepath.Join(t.TempDir(), "out.html")
-	if _, err := Pack(link, "index.html", out); err != nil {
+	if _, err := Pack(link, "index.html", out, false); err != nil {
 		t.Fatal(err)
 	}
 	if m, _ := unpack(t, out); len(m.Files) != 1 {
@@ -160,7 +160,7 @@ func TestPackErrorKeepsOutput(t *testing.T) {
 	outDir := t.TempDir()
 	out := filepath.Join(outDir, "out.html")
 	os.WriteFile(out, []byte("old"), 0o644)
-	if _, err := Pack(dir, "index.html", out); err == nil {
+	if _, err := Pack(dir, "index.html", out, false); err == nil {
 		t.Fatal("expected error for unreadable file")
 	}
 	if data, _ := os.ReadFile(out); string(data) != "old" {
@@ -174,7 +174,7 @@ func TestPackErrorKeepsOutput(t *testing.T) {
 func TestPackBadEntry(t *testing.T) {
 	for _, entry := range []string{"nope.html", "css/style.css"} {
 		out := filepath.Join(t.TempDir(), "out.html")
-		if _, err := Pack("testdata/site", entry, out); err == nil {
+		if _, err := Pack("testdata/site", entry, out, false); err == nil {
 			t.Errorf("%s: expected error", entry)
 		}
 		if _, err := os.Stat(out); err == nil {

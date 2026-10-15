@@ -8,14 +8,36 @@ from any web server, with no extraction step and no server-side support.
 Navigation between pages, back/forward, deep links and site search keep working
 inside the file.
 
-```mermaid
-flowchart LR
-    site["<b>site/</b><br>index.html<br>about/index.html<br>css/ js/ img/ fonts/"]
-    out["<b>out.html</b><br>viewer runtime<br>+ every file, gzipped"]
-    browser["<b>Browser</b><br>file:// or HTTP<br>pages, links, search"]
-    site -- "sitecrate site/" --> out
-    out -- "open" --> browser
+<p align="center">
+  <img src="docs/sitecrate.svg" width="900" alt="A documentation site of hundreds of files goes through sitecrate and becomes one manual.html file, which opens in a browser from disk, from any web server or offline, with links, history, deep links and search working.">
+</p>
+
+## Use case: documentation
+
+Documentation generators such as Sphinx, MkDocs or Hugo produce a folder of
+hundreds of pages, stylesheets, scripts, images and a search index. That folder
+works when it is hosted somewhere, and is awkward to hand to anyone otherwise.
+sitecrate turns it into a single file you can:
+
+- attach to a release next to the binaries, so every version ships with its
+  own manual;
+- include in a product, installer or container image, for reading offline or
+  in air-gapped networks;
+- send by email, or upload to a ticketing system or customer portal that only
+  takes single files;
+- archive alongside a delivery, with links into it (`manual.html#/guide/install.html`)
+  that keep working.
+
+```sh
+sphinx-build docs docs/_build/html
+sitecrate docs/_build/html -o manual.html
 ```
+
+The reader opens `manual.html` in a browser, from disk or from a web server,
+and gets the same site: navigation, back/forward, anchors and search work as
+before. Sphinx sites, including their built-in search, are tested; other
+generators' search may rely on features listed under
+[Limitations](#limitations).
 
 ## Install
 
@@ -32,14 +54,15 @@ or, from a checkout, `make build`.
 ## Usage
 
 ```sh
-sitecrate <site-dir> [-o out.html] [-entry index.html]
+sitecrate <site-dir> [-o out.html] [-entry index.html] [-follow-symlinks]
 ```
 
-| Flag     | Default      | Meaning                                         |
-|----------|--------------|--------------------------------------------------|
-| `-o`     | `out.html`   | Output file.                                     |
-| `-entry` | `index.html` | HTML page shown first, relative to `<site-dir>`. |
-| `-version` |            | Print the version and exit.                      |
+| Flag               | Default      | Meaning                                          |
+|--------------------|--------------|--------------------------------------------------|
+| `-o`               | `out.html`   | Output file.                                     |
+| `-entry`           | `index.html` | HTML page shown first, relative to `<site-dir>`. |
+| `-follow-symlinks` | off          | Also pack symlinks to files outside `<site-dir>`. |
+| `-version`         |              | Print the version and exit.                      |
 
 Flags may come before or after `<site-dir>`.
 
@@ -53,8 +76,11 @@ sitecrate ./public -o docs.html
 What is packed:
 
 - every regular file under `<site-dir>`;
-- symlinks to files are followed; symlinked directories are not, except
-  `<site-dir>` itself;
+- symlinks to files inside `<site-dir>` are followed; symlinks to files
+  outside it are skipped with a warning, unless `-follow-symlinks` is given
+  (Debian's documentation packages, for one, link to shared JavaScript
+  elsewhere on the system);
+- symlinked directories are not followed, except `<site-dir>` itself;
 - files and directories whose name starts with `.` are skipped;
 - files whose name is not valid UTF-8 are skipped, with a warning;
 - the output file itself is skipped if it lives inside `<site-dir>`.

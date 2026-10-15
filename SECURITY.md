@@ -36,9 +36,10 @@ from elements whose URLs are rewritten. The integrity of the site is that of the
 packed file as a whole; distribute it with a checksum or signature if that
 matters.
 
-**The packer follows symlinks to files.** A symlink inside the site directory
-that points to a file outside it causes that file's contents to be embedded. Do
-not pack a directory whose contents you have not reviewed.
+**Symlinks out of the site are not followed by default.** A symlink inside the
+site directory that points to a file outside it is skipped with a warning. With
+`-follow-symlinks`, that file's contents are embedded; only use it on a
+directory whose contents you have reviewed.
 
 **The packer embeds everything it finds.** All non-hidden files under the site
 directory end up in the output, readable by anyone who has the file. Check for

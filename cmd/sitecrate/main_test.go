@@ -26,6 +26,7 @@ func TestRun(t *testing.T) {
 		{func(out string) []string { return []string{"../../testdata/site", "extra", "-o", out} }, 2, false},
 		{func(out string) []string { return []string{"../../testdata/site", "-o", out, "-entry", "nope.html"} }, 1, false},
 		{func(out string) []string { return []string{"no/such/dir", "-o", out} }, 1, false},
+		{func(out string) []string { return []string{"../../testdata/site", "-follow-symlinks", "-o", out} }, 0, true},
 	}
 	for _, tt := range tests {
 		out := filepath.Join(t.TempDir(), "out.html")

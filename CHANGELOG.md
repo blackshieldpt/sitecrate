@@ -14,8 +14,9 @@ First version.
   into a single HTML file that opens from disk or from a web server.
   `sitecrate -version` prints the version.
 - Gzip-compressed payload embedded in the output, inflated in the browser.
-- Every regular file under the site directory is packed. Symlinks to files are
-  followed; hidden files and the output file itself are skipped.
+- Every regular file under the site directory is packed. Symlinks to files
+  inside it are followed, and with `-follow-symlinks` also those to files
+  outside it; hidden files and the output file itself are skipped.
 - In-browser runtime that renders pages in an iframe and serves assets from
   blob URLs: `src`, `link href`, `srcset`, `poster`, `object data`, and
   `url()`, `@import` and `image-set()` in stylesheets, `<style>` elements and

@@ -8,11 +8,19 @@ import (
 	"unicode/utf8"
 )
 
-// walk returns the slash-separated relative paths of all non-hidden files
-// under dir, except the file skip. Paths that are not valid UTF-8, which the
-// manifest cannot carry, are returned in invalid instead.
-func walk(dir string, skip fs.FileInfo) (paths, invalid []string, err error) {
-	err = filepath.WalkDir(dir, func(p string, d fs.DirEntry, err error) error {
+// found is the result of walking a site directory
+type found struct {
+	paths   []string // files to pack
+	invalid []string // names that are not valid UTF-8, which the manifest cannot carry
+	outside []string // symlinks to files outside the site, when they are not followed
+}
+
+// walk finds the slash-separated relative paths of all non-hidden files
+// under dir, except the file skip. Symlinks to files outside dir are only
+// packed when followSymlinks is set.
+func walk(dir string, skip fs.FileInfo, followSymlinks bool) (found, error) {
+	var f found
+	err := filepath.WalkDir(dir, func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -34,12 +42,26 @@ func walk(dir string, skip fs.FileInfo) (paths, invalid []string, err error) {
 		if err != nil {
 			return err
 		}
-		if rel = filepath.ToSlash(rel); utf8.ValidString(rel) {
-			paths = append(paths, rel)
-		} else {
-			invalid = append(invalid, rel)
+		rel = filepath.ToSlash(rel)
+		switch {
+		case d.Type()&fs.ModeSymlink != 0 && !followSymlinks && !inside(dir, p):
+			f.outside = append(f.outside, rel)
+		case !utf8.ValidString(rel):
+			f.invalid = append(f.invalid, rel)
+		default:
+			f.paths = append(f.paths, rel)
 		}
 		return nil
 	})
-	return paths, invalid, err
+	return f, err
+}
+
+// inside reports whether the symlink p resolves to a file under dir
+func inside(dir, p string) bool {
+	target, err := filepath.EvalSymlinks(p)
+	if err != nil {
+		return false
+	}
+	rel, err := filepath.Rel(dir, target)
+	return err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
 }

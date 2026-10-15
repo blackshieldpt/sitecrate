@@ -25,9 +25,10 @@ func run(args []string, stdout, stderr io.Writer) int {
 	flags.SetOutput(stderr)
 	out := flags.String("o", "out.html", "output file")
 	entry := flags.String("entry", "index.html", "entry page, relative to site-dir")
+	follow := flags.Bool("follow-symlinks", false, "also pack symlinks to files outside site-dir")
 	showVersion := flags.Bool("version", false, "print the version and exit")
 	flags.Usage = func() {
-		fmt.Fprintln(stderr, "usage: sitecrate <site-dir> [-o out.html] [-entry index.html]")
+		fmt.Fprintln(stderr, "usage: sitecrate <site-dir> [-o out.html] [-entry index.html] [-follow-symlinks]")
 		fmt.Fprintln(stderr, "       sitecrate -version")
 		flags.PrintDefaults()
 	}
@@ -61,7 +62,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 
-	warnings, err := sitecrate.Pack(dir, filepath.ToSlash(filepath.Clean(*entry)), *out)
+	warnings, err := sitecrate.Pack(dir, filepath.ToSlash(filepath.Clean(*entry)), *out, *follow)
 	for _, w := range warnings {
 		fmt.Fprintln(stderr, "warning:", w)
 	}

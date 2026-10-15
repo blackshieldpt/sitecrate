@@ -13,7 +13,7 @@ func TestPackWarnings(t *testing.T) {
 	os.WriteFile(filepath.Join(dir, "app.js"), []byte(`import x from "./x.js"; fetch("data.json"); new XMLHttpRequest()`), 0o644)
 	os.WriteFile(filepath.Join(dir, "x.js"), []byte(`export default fetch`), 0o644)
 	os.WriteFile(filepath.Join(dir, "y.js"), []byte(`fetch("y.json"); new XMLHttpRequest()`), 0o644)
-	warnings, err := Pack(dir, "index.html", filepath.Join(t.TempDir(), "out.html"))
+	warnings, err := Pack(dir, "index.html", filepath.Join(t.TempDir(), "out.html"), false)
 	if err != nil {
 		t.Fatal(err)
 	}
