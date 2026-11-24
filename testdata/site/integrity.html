@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Integrity</title>
+<link id="cdn-css" rel="stylesheet" href="https://cdn.sitecrate.invalid/lib.css" integrity="sha384-YZRJBGHHKTyZdaRPD/CX9jtNNkY2BxW3+mvyf3mLcNg+DIb3Sl5xrKZZIp64WCX3" crossorigin="anonymous">
+</head>
+<body>
+<h1>Integrity</h1>
+<p id="js">js not run</p>
+<p id="cdn-css-target">styled by a stylesheet from another host</p>
+<script id="cdn-js" src="https://cdn.sitecrate.invalid/lib.js" integrity="sha384-dpuLpsTgu0GixhaO1xOSSfGqY+bASh9aNIt8IJMMJliDCVZmWTmtrY06QelrmCXY" crossorigin="anonymous"></script>
+<script id="tampered-js" src="https://cdn.sitecrate.invalid/tampered.js" integrity="sha384-hk44qyAzC8E49N5FefIIMN7nfaYgxNsrUQGgk8nQSxjHLJQJWX1foB8vpkeuhttj" crossorigin="anonymous"></script>
+<script id="local-js" src="js/app.js" integrity="sha384-dWWm8r0+8dq29fU/8/pS/Jlws9NZWierlFfbZCaF0onenCm/dHL8oFEZyb3zye9U"></script>
+</body>
+</html>

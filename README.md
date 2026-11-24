@@ -148,7 +148,9 @@ browser, when a page is first shown:
   original page.
 - Resources loaded from other hosts (CDNs, web fonts, analytics) are not
   embedded. They are still fetched at view time and need a network connection.
-- `integrity` attributes are removed from rewritten elements.
+- `integrity` attributes are removed from elements rewritten to packed files.
+  Other elements keep theirs, so a resource from another host with `integrity`
+  needs `crossorigin` and CORS headers to load.
 - The whole site is held in memory while the file is open.
 
 The viewer needs a browser with `DecompressionStream`, which all major engines

@@ -31,10 +31,15 @@ in a same-origin iframe by the embedded runtime.
 loaded from other hosts are still fetched from those hosts when the file is
 viewed.
 
-**Subresource Integrity is not preserved.** `integrity` attributes are removed
-from elements whose URLs are rewritten. The integrity of the site is that of the
-packed file as a whole; distribute it with a checksum or signature if that
-matters.
+**Subresource Integrity is not preserved for packed files.** `integrity`
+attributes are removed from elements whose URLs are rewritten to files packed
+into the output. The integrity of those files is that of the packed file as a
+whole; distribute it with a checksum or signature if that matters. Elements
+whose references are not to packed files (resources from other hosts, `data:`
+URLs, files that were not packed) keep their `integrity` attributes, and the
+browser still checks them. A resource from another host with `integrity` then
+needs `crossorigin` and CORS headers from that host to load, as on any
+cross-origin page, including absolute URLs to the site's own host.
 
 **Symlinks out of the site are not followed by default.** A symlink inside the
 site directory that points to a file outside it, or any absolute symlink, is

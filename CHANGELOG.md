@@ -4,6 +4,20 @@ All notable changes to sitecrate are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Scripts and stylesheets loaded from other hosts (CDNs) keep their `integrity`
+  attributes, so the browser blocks them again when their content does not
+  match. Previously the runtime removed `integrity` from every element it
+  processed. Repack sites that load CDN resources with `integrity` to get the
+  fix. Such a resource now loads only with `crossorigin` and CORS headers from
+  its host, as on any cross-origin page; this includes absolute URLs to the
+  site's own host (`https://example.com/x.js` on example.com), which loaded
+  unchecked before. Make those URLs relative so they are packed, or serve them
+  with CORS.
+
 ## [0.1.0] - 2026-10-15
 
 First version.
