@@ -15,7 +15,7 @@ import (
 
 // version is the release version; the release workflow checks that the tag
 // matches it
-const version = "0.1.0"
+const version = "0.1.1"
 
 func main() {
 	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
