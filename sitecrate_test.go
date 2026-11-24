@@ -74,6 +74,7 @@ func TestPackRoundTrip(t *testing.T) {
 		"img/dot,copy.png":  "image/png",
 		"img/dot.png":       "image/png",
 		"index.html":        "text/html",
+		"integrity.html":    "text/html",
 		"js/app.js":         "text/javascript",
 		"js/search.js":      "text/javascript",
 		"later.html":        "text/html",

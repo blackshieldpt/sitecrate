@@ -61,6 +61,20 @@ async function run(context, base) {
     return page;
   };
 
+  // cdn.sitecrate.invalid stands in for a CDN that pages of the site load
+  // resources from, with integrity attributes (integrity.html)
+  const cdn = {
+    '/lib.js': ['text/javascript', "document.documentElement.dataset.cdn = 'ran';"],
+    '/tampered.js': ['text/javascript', "document.documentElement.dataset.tampered = 'ran';"],
+    '/lib.css': ['text/css', '#cdn-css-target { color: rgb(1, 2, 3); }'],
+  };
+  const served = new Set();
+  await context.route('https://cdn.sitecrate.invalid/**', (r) => {
+    const [contentType, body] = cdn[new URL(r.request().url()).pathname];
+    served.add(new URL(r.request().url()).pathname);
+    return r.fulfill({ contentType, body, headers: { 'Access-Control-Allow-Origin': '*' } });
+  });
+
   let page = await open('');
   const frame = () => page.locator('iframe').contentFrame();
   const inFrame = (fn) => frame().locator('html').evaluate(fn);
@@ -195,6 +209,32 @@ async function run(context, base) {
   await frame().locator('#to-home').click();
   check('link on invalid-base page', await title('Home') === 'Home', await hash());
 
+  page = await open('#/integrity.html');
+  await title('Integrity');
+  await frame().locator('#js', { hasText: 'js ok' }).waitFor({ timeout: 5000 }).catch(() => {});
+  const sri = await inFrame(() => {
+    const el = (id) => document.getElementById(id);
+    return {
+      cdnJS: el('cdn-js').getAttribute('integrity'),
+      cdnCSS: el('cdn-css').getAttribute('integrity'),
+      localJS: el('local-js').getAttribute('integrity'),
+      localSrc: el('local-js').getAttribute('src'),
+      cdnRan: document.documentElement.dataset.cdn,
+      tamperedRan: document.documentElement.dataset.tampered,
+      color: getComputedStyle(el('cdn-css-target')).color,
+      js: el('js').textContent,
+    };
+  });
+  check('issue 1 claim 1: remote script keeps integrity', /^sha384-/.test(sri.cdnJS), sri.cdnJS);
+  check('issue 1 claim 1: remote script failing integrity is blocked', served.has('/tampered.js') && sri.tamperedRan === undefined,
+    [served.has('/tampered.js'), sri.tamperedRan]);
+  check('issue 1 claim 2: remote stylesheet keeps integrity', /^sha384-/.test(sri.cdnCSS), sri.cdnCSS);
+  check('issue 1 claim 3: packed script loses integrity for a blob URL', sri.localJS === null && sri.localSrc.startsWith('blob:'),
+    [sri.localJS, sri.localSrc]);
+  check('remote script with valid integrity runs', sri.cdnRan === 'ran', sri.cdnRan);
+  check('remote stylesheet with valid integrity applies', sri.color === 'rgb(1, 2, 3)', sri.color);
+  check('packed script with integrity runs', sri.js === 'js ok', sri.js);
+
   page = await open('#/nope.html');
   check('not found', await page.locator('pre').textContent() === 'Not found: /nope.html' && await page.title() === 'Not found',
     [await page.locator('pre').textContent(), await page.title()]);
@@ -203,6 +243,8 @@ async function run(context, base) {
   check('unpack failure is reported', (await page.locator('pre').textContent()).startsWith('Cannot open this file:'),
     await page.locator('pre').textContent());
 
-  check('no page errors', errors.length === 0, errors);
+  // the browser reports blocking tampered.js on integrity.html
+  const unexpected = errors.filter((e) => !e.includes('cdn.sitecrate.invalid/tampered.js'));
+  check('no page errors', unexpected.length === 0, unexpected);
   return failures;
 }

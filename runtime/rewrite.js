@@ -112,8 +112,9 @@ function rewriteHTML(html, path, search) {
   ];
   for (const [selector, attr] of attrs) {
     for (const el of doc.querySelectorAll(selector)) {
-      el.setAttribute(attr, asset(el.getAttribute(attr), base));
-      el.removeAttribute('integrity');
+      const ref = el.getAttribute(attr), url = asset(ref, base);
+      el.setAttribute(attr, url);
+      if (url !== ref) el.removeAttribute('integrity'); // kept unless the reference is to a packed file
     }
   }
   for (const el of doc.querySelectorAll('[srcset]')) el.setAttribute('srcset', rewriteSrcset(el.getAttribute('srcset'), base));
